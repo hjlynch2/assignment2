@@ -37,10 +37,10 @@ class BreakthroughGame:
 # a single attacking piece)."
 # - https://en.wikipedia.org/wiki/Breakthrough_(board_game)
 
-    def offensive(self, agent, opponent): #CHANGE THIS
+    def offensive(self, orig_game, agent, opponent): #CHANGE THIS
         return (self.score[agent] - self.score[opponent])
 
-    def defensive(self, agent, opponent): #CHANGE THIS
+    def defensive(self, orig_game, agent, opponent): #CHANGE THIS
         return (self.score[opponent] - self.score[agent])
 
     def generateMoves(self, agent):
@@ -89,12 +89,12 @@ class BreakthroughGame:
                         except: pass
         return available_moves
 
-def miniMax(game, agent, opponent, max_player, depth, heuristic, move=None):
+def miniMax(game, orig_game, agent, opponent, max_player, depth, heuristic, move=None):
     if(depth == 0 or 'b' in game.board[7] or 'w' in game.board[0] or game.score['b'] == 0 or game.score['w'] == 0):
-        if(heuristic == 'ovd'): return (game.offensive(agent, opponent) if max_player else game.defensive(agent, opponent), move)
-        if(heuristic == 'dvo'): return (game.defensive(agent, opponent) if max_player else game.offensive(agent, opponent), move)
-        if(heuristic == 'ovo'): return (game.offensive(agent, opponent) if max_player else game.offensive(agent, opponent), move)
-        if(heuristic == 'dvd'): return (game.defensive(agent, opponent) if max_player else game.defensive(agent, opponent), move)
+        if(heuristic == 'ovd'): return (game.offensive(orig_game, agent, opponent) if max_player else game.defensive(orig_game, agent, opponent), move)
+        if(heuristic == 'dvo'): return (game.defensive(orig_game, agent, opponent) if max_player else game.offensive(orig_game, agent, opponent), move)
+        if(heuristic == 'ovo'): return (game.offensive(orig_game, agent, opponent) if max_player else game.offensive(orig_game, agent, opponent), move)
+        if(heuristic == 'dvd'): return (game.defensive(orig_game, agent, opponent) if max_player else game.defensive(orig_game, agent, opponent), move)
     max_value = -sys.maxsize - 1
     min_value = sys.maxsize
     best_move = [(-1,-1),(-1,-1)]
@@ -103,7 +103,7 @@ def miniMax(game, agent, opponent, max_player, depth, heuristic, move=None):
         game_copy = deepcopy(game)
         miniMax.nodes += 1
         game_copy.makeMove(available[0], available[1], agent)
-        move_score = miniMax(game_copy, opponent, agent, not max_player, depth-1, heuristic, available)
+        move_score = miniMax(game_copy, orig_game, opponent, agent, not max_player, depth-1, heuristic, available)
         if max_player:
             if move_score[0] > max_value:
                 max_value = move_score[0]
@@ -114,19 +114,19 @@ def miniMax(game, agent, opponent, max_player, depth, heuristic, move=None):
                 best_move = available
     return (max_value if max_player else min_value, best_move)
 
-def ABPruning(game, agent, opponent, max_player, depth, alpha, beta, heuristic, move=0):
+def ABPruning(game, orig_game, agent, opponent, max_player, depth, alpha, beta, heuristic, move=0):
     if(depth == 0 or 'b' in game.board[7] or 'w' in game.board[0] or game.score['b'] == 0 or game.score['w'] == 0):
-        if(heuristic == 'ovd'): return (game.offensive(agent, opponent) if max_player else game.defensive(agent, opponent), move)
-        if(heuristic == 'dvo'): return (game.defensive(agent, opponent) if max_player else game.offensive(agent, opponent), move)
-        if(heuristic == 'ovo'): return (game.offensive(agent, opponent) if max_player else game.offensive(agent, opponent), move)
-        if(heuristic == 'dvd'): return (game.defensive(agent, opponent) if max_player else game.defensive(agent, opponent), move)
+        if(heuristic == 'ovd'): return (game.offensive(orig_game, agent, opponent) if max_player else game.defensive(orig_game, agent, opponent), move)
+        if(heuristic == 'dvo'): return (game.defensive(orig_game, agent, opponent) if max_player else game.offensive(orig_game, agent, opponent), move)
+        if(heuristic == 'ovo'): return (game.offensive(orig_game, agent, opponent) if max_player else game.offensive(orig_game, agent, opponent), move)
+        if(heuristic == 'dvd'): return (game.defensive(orig_game, agent, opponent) if max_player else game.defensive(orig_game, agent, opponent), move)
     best_move = [(-1,-1),(-1,-1)]
     moves_available = game.generateMoves(agent)
     for available in moves_available:
         game_copy = deepcopy(game)
         ABPruning.nodes += 1
         game_copy.makeMove(available[0], available[1], agent)
-        move_score = ABPruning(game_copy, opponent, agent, not max_player, depth-1, alpha, beta, heuristic, available)
+        move_score = ABPruning(game_copy, orig_game, opponent, agent, not max_player, depth-1, alpha, beta, heuristic, available)
         if max_player:
             if move_score[0] > alpha:
                 alpha = move_score[0]
@@ -152,7 +152,7 @@ def simulate(game, matchup, heuristic):
             start_time = time.time()
             miniMax.nodes = 0
 
-            result = miniMax(game, current_team, opponent_team, max_player, 3, heuristic)
+            result = miniMax(game, game, current_team, opponent_team, max_player, 3, heuristic)
             if(result[1] == None): break
             game.makeMove(result[1][0], result[1][1], current_team)
 
@@ -174,7 +174,7 @@ def simulate(game, matchup, heuristic):
             start_time = time.time()
             ABPruning.nodes = 0
 
-            result = ABPruning(game, current_team, opponent_team, max_player, 3, -100000, 100000, heuristic)
+            result = ABPruning(game, game, current_team, opponent_team, max_player, 3, -100000, 100000, heuristic)
             if(result[1] == None): break
             try: game.makeMove(result[1][0], result[1][1], current_team)
             except: break
@@ -199,9 +199,9 @@ def simulate(game, matchup, heuristic):
             ABPruning.nodes = 0
 
             if(current_team == 'w'):
-                result = miniMax(game, current_team, opponent_team, max_player, 3, heuristic)
+                result = miniMax(game, game, current_team, opponent_team, max_player, 3, heuristic)
             if(current_team == 'b'):
-                result = ABPruning(game, current_team, opponent_team, max_player, 3, -100000, 100000, heuristic)
+                result = ABPruning(game, game, current_team, opponent_team, max_player, 3, -100000, 100000, heuristic)
             if(result[1] == None): break
 
             try: game.makeMove(result[1][0], result[1][1], current_team)
@@ -231,9 +231,9 @@ def simulate(game, matchup, heuristic):
             ABPruning.nodes = 0
 
             if(current_team == 'w'):
-                result = ABPruning(game, current_team, opponent_team, max_player, 3, -100000, 100000, heuristic)
+                result = ABPruning(game, game, current_team, opponent_team, max_player, 3, -100000, 100000, heuristic)
             if(current_team == 'b'):
-                result = miniMax(game, current_team, opponent_team, max_player, 3, heuristic)
+                result = miniMax(game, game, current_team, opponent_team, max_player, 3, heuristic)
             if(result[1] == None): break
 
             try: game.makeMove(result[1][0], result[1][1], current_team)
