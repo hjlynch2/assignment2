@@ -248,7 +248,7 @@ def getWordPlacement(grid, wordsList):
                     letterIt = letterIt + 1
                 if letterIt >= len(word):
                     wordFound = True
-                    wordDict[word] = (start_row, start_col, "across")
+                    wordDict[word] = (start_row, start_col, "down")
                     break
             if wordFound:
                 break
