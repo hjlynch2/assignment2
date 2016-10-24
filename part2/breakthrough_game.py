@@ -12,7 +12,7 @@ import math
 from random import randint
 
 class BreakthroughGame:
-    def __init__(self, matchup, heuristic): #)
+    def __init__(self, matchup, heuristic): 
         self.board = []
         self.score = {'b': 16, 'w': 16}
         with open('board.txt') as textFile:
@@ -60,7 +60,14 @@ class BreakthroughGame:
         #Param 5 is average distance to the end
         avg_dist_changed = self.find_avg_dist_to_end(agent, self.board) - self.find_avg_dist_to_end(agent, orig_game.board)
 
-        return -1*(num_opponents_killed + 5*(7-agent_dist_to_end) + avg_dist_changed + 2*num_open_lanes - diff_dist)
+        #Param 6 is whether a win is imminent
+        is_win_there = self.check_if_win(agent, self.board)
+        is_win_almost_there = self.check_if_win_imminent(agent, self.board)
+
+        opponent_win = self.check_if_win(opponent, self.board)
+        opponent_imminent = self.check_if_win_imminent(opponent, self.board)
+
+        return (5*num_opponents_killed + 5*(7-agent_dist_to_end) + avg_dist_changed + .5*num_open_lanes - diff_dist) + 1000*(is_win_there) + 500*(is_win_almost_there) - 100000*(opponent_win) - 1000*(opponent_imminent)
 
 
     def defensive(self, orig_game, agent, opponent): #CHANGE THIS
@@ -85,13 +92,13 @@ class BreakthroughGame:
         #Param 5 is average distance to the end
         avg_dist_changed = self.find_avg_dist_to_end(agent, self.board) - self.find_avg_dist_to_end(agent, orig_game.board)
 
-        return -1*(num_opponents_killed + 2*(7-agent_dist_to_end) + avg_dist_changed - 2*opponent_open_lanes - diff_dist)
+        return (num_opponents_killed + 2*(7-agent_dist_to_end) + avg_dist_changed - 2*opponent_open_lanes - diff_dist)
 
 
     def count_nums(self, color, board):
         count = 0
-        for x in xrange(0, len(board)):
-            for y in xrange(0, len(board[0])):
+        for x in range(0, len(board)):
+            for y in range(0, len(board[0])):
                 if board[x][y] == color:
                     count += 1
         return count
@@ -104,8 +111,8 @@ class BreakthroughGame:
         else:
             end_goal = 0
         dist_sum = 0
-        for i in xrange(0, len(board)):
-            for j in xrange(0, len(board[0])):
+        for i in range(0, len(board)):
+            for j in range(0, len(board[0])):
                 if(board[i][j] == color):
                     new_dist = abs(i - end_goal)
                     dist = min(dist, new_dist)
@@ -113,19 +120,19 @@ class BreakthroughGame:
 
     #Find avg distance to end
     def find_avg_dist_to_end(self, color, board):
-        dist = 0 
+        dist = 0
         num_pieces = 0
         if color == 'b':
             end_goal = 7
         else:
             end_goal = 0
         dist_sum = 0
-        for i in xrange(0, len(board)):
-            for j in xrange(0, len(board[0])):
+        for i in range(0, len(board)):
+            for j in range(0, len(board[0])):
                 if(board[i][j] == color):
                     dist += abs(i - end_goal)
                     num_pieces += 1
-        return dist/num_pieces
+        return float(dist)/num_pieces
 
     def find_lanes_to_end(self, color, board):
         num_lanes = 0
@@ -133,18 +140,34 @@ class BreakthroughGame:
             end_goal = 7
         else:
             end_goal = 0
-        for i in xrange(0, len(board)):
-            for j in xrange(0, len(board[0])):
+        for i in range(0, len(board)):
+            for j in range(0, len(board[0])):
                 if(board[i][j] == color):
                     num_lanes += self.find_lanes(color, i, j, end_goal, board)
         return num_lanes
+
+    def check_if_win(self, color, board):
+        if color == 'b':
+            end_goal = 7
+        else:
+            end_goal = 0
+
+        return color in board[end_goal]
+
+    def check_if_win_imminent(self, color, board):
+        if color == 'b':
+            pre_goal = 6
+        else:
+            pre_goal = 1
+
+        return color in board[pre_goal]
 
 
     def find_lanes(self, color, cur_i, cur_j, end_row, board):
         res = 3
         if color == 'b':
             enemy = 'w'
-            start = cur_i 
+            start = cur_i
             end = end_row
         else:
             enemy = 'b'
@@ -152,14 +175,14 @@ class BreakthroughGame:
             end = cur_i
 
         # Look straight ahead
-        for x in xrange(start, end+1):
+        for x in range(start, end+1):
             if(board[x][cur_j] == enemy):
                 res -= 1
                 break
 
         #Look in the left lane
         if cur_j > 0:
-            for x in xrange(start, end+1):
+            for x in range(start, end+1):
                 if(board[x][cur_j-1] == enemy):
                     res -= 1
                     break
@@ -168,7 +191,7 @@ class BreakthroughGame:
 
         #Look in the right lane
         if cur_j < 7:
-            for x in xrange(start, end+1):
+            for x in range(start, end+1):
                 if(board[x][cur_j+1] == enemy):
                     res -= 1
                     break
@@ -226,19 +249,11 @@ class BreakthroughGame:
 
 def miniMax(game, orig_game, agent, opponent, max_player, depth, heuristic, move=None):
     if(depth == 0 or 'b' in game.board[7] or 'w' in game.board[0] or game.score['b'] == 0 or game.score['w'] == 0):
-        if(heuristic == 'ovd'): 
-            if max_player:
-                val = game.offensive(orig_game, agent, opponent)
-            else:
-                val = game.defensive(orig_game, agent, opponent)
-            return (val, move)
-        if(heuristic == 'dvo'): 
-            return (game.defensive(orig_game, agent, opponent) if max_player else game.offensive(orig_game, agent, opponent), move)
-        if(heuristic == 'ovo'): 
-            return (game.offensive(orig_game, agent, opponent) if max_player else game.offensive(orig_game, agent, opponent), move)
-        if(heuristic == 'dvd'): 
-            return (game.defensive(orig_game, agent, opponent) if max_player else game.defensive(orig_game, agent, opponent), move)
-    max_value = -sys.maxsize 
+        if(heuristic == 'ovd'): return (game.offensive(orig_game, agent, opponent) if max_player else game.defensive(orig_game, agent, opponent), move)
+        if(heuristic == 'dvo'): return (game.defensive(orig_game, agent, opponent) if max_player else game.offensive(orig_game, agent, opponent), move)
+        if(heuristic == 'ovo'): return (game.offensive(orig_game, agent, opponent) if max_player else game.offensive(orig_game, agent, opponent), move)
+        if(heuristic == 'dvd'): return (game.defensive(orig_game, agent, opponent) if max_player else game.defensive(orig_game, agent, opponent), move)
+    max_value = -sys.maxsize - 1
     min_value = sys.maxsize
     best_move = [(-1,-1),(-1,-1)]
     moves_available = game.generateMoves(agent)
@@ -246,8 +261,6 @@ def miniMax(game, orig_game, agent, opponent, max_player, depth, heuristic, move
         game_copy = deepcopy(game)
         miniMax.nodes += 1
         game_copy.makeMove(available[0], available[1], agent)
-
-        ##### Changed the max_player param #####
         move_score = miniMax(game_copy, orig_game, opponent, agent, not max_player, depth-1, heuristic, available)
         if max_player:
             if move_score[0] > max_value:
@@ -261,14 +274,10 @@ def miniMax(game, orig_game, agent, opponent, max_player, depth, heuristic, move
 
 def ABPruning(game, orig_game, agent, opponent, max_player, depth, alpha, beta, heuristic, move=0):
     if(depth == 0 or 'b' in game.board[7] or 'w' in game.board[0] or game.score['b'] == 0 or game.score['w'] == 0):
-        if(heuristic == 'ovd'): 
-            return (game.offensive(orig_game, agent, opponent) if max_player else game.defensive(orig_game, agent, opponent), move)
-        if(heuristic == 'dvo'): 
-            return (game.defensive(orig_game, agent, opponent) if max_player else game.offensive(orig_game, agent, opponent), move)
-        if(heuristic == 'ovo'): 
-            return (game.offensive(orig_game, agent, opponent) if max_player else game.offensive(orig_game, agent, opponent), move)
-        if(heuristic == 'dvd'): 
-            return (game.defensive(orig_game, agent, opponent) if max_player else game.defensive(orig_game, agent, opponent), move)
+        if(heuristic == 'ovd'): return (game.offensive(orig_game, agent, opponent) if max_player else game.defensive(orig_game, agent, opponent), move)
+        if(heuristic == 'dvo'): return (game.defensive(orig_game, agent, opponent) if max_player else game.offensive(orig_game, agent, opponent), move)
+        if(heuristic == 'ovo'): return (game.offensive(orig_game, agent, opponent) if max_player else game.offensive(orig_game, agent, opponent), move)
+        if(heuristic == 'dvd'): return (game.defensive(orig_game, agent, opponent) if max_player else game.defensive(orig_game, agent, opponent), move)
     best_move = [(-1,-1),(-1,-1)]
     moves_available = game.generateMoves(agent)
     for available in moves_available:
