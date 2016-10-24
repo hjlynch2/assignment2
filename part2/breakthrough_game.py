@@ -92,7 +92,14 @@ class BreakthroughGame:
         #Param 5 is average distance to the end
         avg_dist_changed = self.find_avg_dist_to_end(agent, self.board) - self.find_avg_dist_to_end(agent, orig_game.board)
 
-        return (num_opponents_killed + 2*(7-agent_dist_to_end) + avg_dist_changed - 2*opponent_open_lanes - diff_dist)
+        #Param 6 is whether a win is imminent
+        is_win_there = self.check_if_win(agent, self.board)
+        is_win_almost_there = self.check_if_win_imminent(agent, self.board)
+
+        opponent_win = self.check_if_win(opponent, self.board)
+        opponent_imminent = self.check_if_win_imminent(opponent, self.board)
+
+        return (num_opponents_killed + 2*(7-agent_dist_to_end) + avg_dist_changed - 2*opponent_open_lanes - diff_dist) + 1000*(is_win_there) + 500*(is_win_almost_there) - 100000*(opponent_win) - 1000*(opponent_imminent)
 
 
     def count_nums(self, color, board):
